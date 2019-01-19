@@ -107,12 +107,13 @@ var vm = new Vue({
                     }, 1000, 60)
                 })
                 .catch(error => {
-                    if (error.status == 400) {
+                    // console.log(error.response);
+                    if (error.response.status == 400) {
                         // 展示发送短信错误提示
                         this.error_sms_code = true;
-                        this.error_sms_code_message = error.data.message;
+                        this.error_sms_code_message = error.response.data.message;
                     } else {
-                        console.log(error.data);
+                        console.log(error.response.data);
                     }
                     this.sending_flag = false;
                 })
