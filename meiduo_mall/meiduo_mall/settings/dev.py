@@ -27,7 +27,8 @@ SECRET_KEY = '2n93t8=3m2*5$16dh7ixtj7pp+*4kb&dlpg!uhh$lmju)af8-v'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# 运行哪些域名来访问django
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 # Application definition
 
@@ -40,11 +41,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',  # DRF
+    'corsheaders',  # cors
 
     'users.apps.UsersConfig',  # 注册用户的子应用
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # 最外层的中间件
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -205,3 +209,10 @@ REST_FRAMEWORK = {
 # 修改用户模型类  String model references must be of the form 'app_label.ModelName'
 # 修改用户模型类的导包路径必须 是  应用名.模型名 这种格式
 AUTH_USER_MODEL = 'users.User'
+
+# CORS  追加白名单
+CORS_ORIGIN_WHITELIST = (
+    '127.0.0.1:8080',
+    'localhost:8080',
+)
+CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
