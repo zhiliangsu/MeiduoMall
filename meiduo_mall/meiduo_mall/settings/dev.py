@@ -28,7 +28,7 @@ SECRET_KEY = '2n93t8=3m2*5$16dh7ixtj7pp+*4kb&dlpg!uhh$lmju)af8-v'
 DEBUG = True
 
 # 运行哪些域名来访问django
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'www.meiduo.site', 'api.meiduo.site']
 
 # Application definition
 
@@ -214,5 +214,7 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ORIGIN_WHITELIST = (
     '127.0.0.1:8080',
     'localhost:8080',
+    'www.meiduo.site:8080',
+    'api.meiduo.site:8000',
 )
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
