@@ -8,6 +8,7 @@ from django_redis import get_redis_connection
 from rest_framework import status
 
 from meiduo_mall.libs.yuntongxun.sms import CCP
+from . import constants
 
 logger = logging.getLogger('django')  # 创建日志输出器
 
@@ -35,12 +36,12 @@ class SMSCodeView(APIView):
         logger.info(sms_code)
 
         # redis_conn.setex(key, 过期时间, value)
-        redis_conn.setex('sms_%s' % mobile, 300, sms_code)
+        redis_conn.setex('sms_%s' % mobile, constants.SMS_CODE_REDIS_EXPIRES, sms_code)
         # 存储此手机已发送短信标记
-        redis_conn.setex('send_flag_%s' % mobile, 60, 1)
+        redis_conn.setex('send_flag_%s' % mobile, constants.SEND_SMS_CODE_INTERVAL, 1)
 
         # 4.集成容联云通讯发送短信验证码
-        CCP().send_template_sms(mobile, [sms_code, 5], 1)
+        CCP().send_template_sms(mobile, [sms_code, constants.SMS_CODE_REDIS_EXPIRES // 60], 1)
 
         # 5.响应结果
         return Response({'message': 'ok'})
