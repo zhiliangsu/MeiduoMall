@@ -22,7 +22,6 @@ class UserCountView(APIView):
     """验证用户名是否已存在"""
 
     def get(self, request, username):
-
         # 查询用户名是否已存在
         count = User.objects.filter(username=username).count()
 
@@ -30,6 +29,23 @@ class UserCountView(APIView):
         data = {
             'count': count,
             'username': username,
+        }
+
+        return Response(data)
+
+
+# url(r'^mobiles/(?P<mobile>1[3-9]\d{9})/count/$', views.MobileCountView.as_view())
+class MobileCountView(APIView):
+    """验证用户名是否已存在"""
+
+    def get(self, request, mobile):
+        # 查询手机号数量
+        count = User.objects.filter(mobile=mobile).count()
+
+        # 构建响应数据
+        data = {
+            'count': count,
+            'mobile': mobile,
         }
 
         return Response(data)
