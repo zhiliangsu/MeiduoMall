@@ -87,6 +87,7 @@ var vm = new Vue({
                 responseType: 'json'
             })
                 .then(response => {
+                	this.error_sms_code = false;
                     // 表示后端发送短信成功
                     // 倒计时60秒，60秒后允许用户再次点击发送短信验证码的按钮
                     var num = 60;
@@ -119,13 +120,42 @@ var vm = new Vue({
                 })
         },
 		// 注册
-		on_submit: function(){
-			this.check_username();
-			this.check_pwd();
-			this.check_cpwd();
-			this.check_phone();
-			this.check_sms_code();
-			this.check_allow();
-		}
+        on_submit: function () {
+            this.check_username();
+            this.check_pwd();
+            this.check_cpwd();
+            this.check_phone();
+            this.check_sms_code();
+            this.check_allow();
+
+            if (this.error_name == false && this.error_password == false && this.error_check_password == false
+                && this.error_phone == false && this.error_sms_code == false && this.error_allow == false) {
+                axios.post(this.host + '/users/', {
+                    username: this.username,
+                    password: this.password,
+                    password2: this.password2,
+                    mobile: this.mobile,
+                    sms_code: this.sms_code,
+                    allow: this.allow.toString()
+                }, {
+                    responseType: 'json'
+                })
+                    .then(response => {
+                        location.href = '/index.html';
+                    })
+                    .catch(error => {
+                        if (error.response.status == 400) {
+                            if ('non_field_errors' in error.response.data) {
+                                this.error_sms_code_message = error.response.data.non_field_errors[0];
+                            } else {
+                                this.error_sms_code_message = '数据有误';
+                            }
+                            this.error_sms_code = true;
+                        } else {
+                            console.log(error.response.data);
+                        }
+                    })
+            }
+        }
 	}
 });

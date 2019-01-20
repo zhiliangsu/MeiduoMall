@@ -21,4 +21,7 @@ urlpatterns = [
 
     # 包含发短信模块路由
     url(r'^', include('verifications.urls')),
+
+    # 包含用户模块路由
+    url(r'^', include('users.urls')),
 ]
