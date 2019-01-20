@@ -9,6 +9,7 @@ from rest_framework import status
 
 from meiduo_mall.libs.yuntongxun.sms import CCP
 from . import constants
+from celery_tasks.sms.tasks import send_sms_code
 
 logger = logging.getLogger('django')  # 创建日志输出器
 
@@ -49,7 +50,9 @@ class SMSCodeView(APIView):
         pl.execute()
 
         # 4.集成容联云通讯发送短信验证码
-        CCP().send_template_sms(mobile, [sms_code, constants.SMS_CODE_REDIS_EXPIRES // 60], 1)
+        # CCP().send_template_sms(mobile, [sms_code, constants.SMS_CODE_REDIS_EXPIRES // 60], 1)
+        # 触发异步任务(让发短信不用阻塞主线程)
+        send_sms_code.delay(mobile, sms_code)
 
         # 5.响应结果
         return Response({'message': 'ok'})
