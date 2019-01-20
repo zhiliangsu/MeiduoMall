@@ -1,72 +1,91 @@
 var vm = new Vue({
-	el: '#app',
-	data: {
-	    // host:host,
+    el: '#app',
+    data: {
+        // host:host,
         host,
-		error_name: false,
-		error_password: false,
-		error_check_password: false,
-		error_phone: false,
-		error_allow: false,
-		error_sms_code: false,
-		sending_flag: false,
+        error_name: false,
+        error_password: false,
+        error_check_password: false,
+        error_phone: false,
+        error_allow: false,
+        error_sms_code: false,
+        sending_flag: false,
 
-		username: '',
-		password: '',
-		password2: '',
-		mobile: '', 
-		sms_code: '',
-		allow: false,
+        username: '',
+        password: '',
+        password2: '',
+        mobile: '',
+        sms_code: '',
+        allow: false,
         sms_code_tip: '获取短信验证码',  // 获取短信验证码将来变成倒计时
         error_sms_code_message: '',  // 短信错误提示信息
-	},
-	methods: {
-		check_username: function (){
-			var len = this.username.length;
-			if(len<5||len>20) {
-				this.error_name = true;
-			} else {
-				this.error_name = false;
-			}
-		},
-		check_pwd: function (){
-			var len = this.password.length;
-			if(len<8||len>20){
-				this.error_password = true;
-			} else {
-				this.error_password = false;
-			}		
-		},
-		check_cpwd: function (){
-			if(this.password!=this.password2) {
-				this.error_check_password = true;
-			} else {
-				this.error_check_password = false;
-			}		
-		},
-		check_phone: function (){
-			var re = /^1[345789]\d{9}$/;
-			if(re.test(this.mobile)) {
-				this.error_phone = false;
-			} else {
-				this.error_phone = true;
-			}
-		},
-		check_sms_code: function(){
-			if(!this.sms_code){
-				this.error_sms_code = true;
-			} else {
-				this.error_sms_code = false;
-			}
-		},
-		check_allow: function(){
-			if(!this.allow) {
-				this.error_allow = true;
-			} else {
-				this.error_allow = false;
-			}
-		},
-		// 发送短信验证码
+        error_name_message: '',
+    },
+    methods: {
+        check_username: function () {
+            var len = this.username.length;
+            if (len < 5 || len > 20) {
+                this.error_name_message = '请输入5-20个字符的用户名';
+                this.error_name = true;
+            } else {
+                this.error_name = false;
+            }
+            // 检查重名
+            if (this.error_name == false) {
+                axios.get(this.host + '/usernames/' + this.username + '/count/', {
+                    responseType: 'json'
+                })
+                    .then(response => {
+                        if (response.data.count > 0) {
+                            this.error_name_message = '用户名已存在';
+                            this.error_name = true;
+                        } else {
+                            this.error_name = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.log(error.response.data);
+                    })
+            }
+        },
+        check_pwd: function () {
+            var len = this.password.length;
+            if (len < 8 || len > 20) {
+                this.error_password = true;
+            } else {
+                this.error_password = false;
+            }
+        },
+        check_cpwd: function () {
+            if (this.password != this.password2) {
+                this.error_check_password = true;
+            } else {
+                this.error_check_password = false;
+            }
+        },
+        check_phone: function () {
+            var re = /^1[345789]\d{9}$/;
+            if (re.test(this.mobile)) {
+                this.error_phone = false;
+            } else {
+                this.error_phone = true;
+            }
+        },
+        check_sms_code: function () {
+            if (!this.sms_code) {
+                this.error_sms_code = true;
+            } else {
+                this.error_sms_code = false;
+            }
+        },
+        check_allow: function () {
+            if (!this.allow) {
+                this.error_allow = true;
+            } else {
+                this.error_allow = false;
+            }
+        },
+        // 发送短信验证码
         send_sms_code: function () {
             if (this.sending_flag == true) {
                 return;
@@ -87,7 +106,7 @@ var vm = new Vue({
                 responseType: 'json'
             })
                 .then(response => {
-                	this.error_sms_code = false;
+                    this.error_sms_code = false;
                     // 表示后端发送短信成功
                     // 倒计时60秒，60秒后允许用户再次点击发送短信验证码的按钮
                     var num = 60;
@@ -119,7 +138,7 @@ var vm = new Vue({
                     this.sending_flag = false;
                 })
         },
-		// 注册
+        // 注册
         on_submit: function () {
             this.check_username();
             this.check_pwd();
@@ -157,5 +176,5 @@ var vm = new Vue({
                     })
             }
         }
-	}
+    }
 });
