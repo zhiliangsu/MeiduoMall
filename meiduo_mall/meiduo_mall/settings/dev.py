@@ -233,3 +233,8 @@ JWT_AUTH = {
     # 修改jwt登录后响应体函数
     'JWT_RESPONSE_PAYLOAD_HANDLER': 'users.utils.jwt_response_payload_handler',
 }
+
+# 修改django默认的认证后端
+AUTHENTICATION_BACKENDS = {
+    'users.utils.UsernameMobileAuthBackend',  # 修改Django认证后端类
+}

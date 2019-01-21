@@ -94,4 +94,8 @@ class UserSerializer(serializers.ModelSerializer):
         # 给user多添加一个属性
         user.token = token
 
+        # 创建一个序列化器对象时,如果给data参数传递实参,此时这个序列化器优先做反序列化,后面也会做好序列化操作,来获取数据之前,
+        # 必须先调用.is_valid方法,才能.data
+        # 创建序列化对象时,如果只给instance参数传递实参,此时这个序列化器只会做序列化操作,只能通过.data属性获取序列化后的字典
+
         return user
