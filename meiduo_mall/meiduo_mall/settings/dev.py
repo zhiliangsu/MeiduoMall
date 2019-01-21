@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
-
-import os, sys
+import datetime
+import os
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -204,6 +205,12 @@ REST_FRAMEWORK = {
     # 自定义异常捕获
     'EXCEPTION_HANDLER': 'meiduo_mall.utils.exceptions.exception_handler',
 
+    'DEFAULT_AUTHENTICATION_CLASSES': (  # 配置全局认证类(验证登录用户是不是本网站用户)
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',  # JWT认证(默认认证方案)
+        'rest_framework.authentication.SessionAuthentication',  # session认证
+        'rest_framework.authentication.BasicAuthentication',  # 基础认证
+    ),
+
 }
 
 # 修改用户模型类  String model references must be of the form 'app_label.ModelName'
@@ -218,3 +225,8 @@ CORS_ORIGIN_WHITELIST = (
     'api.meiduo.site:8000',
 )
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
+
+# 指定JWT token有效期
+JWT_AUTH = {
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
+}
