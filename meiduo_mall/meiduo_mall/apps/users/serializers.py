@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
         # 模型中已存在的字段: 'id', 'username', 'password', 'mobile'
         # 输出: 'id', 'username'
         # 输入: 'username', 'password', 'password2', 'mobile', 'sms_code', 'allow'
-        fields = ['id', 'username', 'password', 'password2', 'mobile', 'sms_code', 'allow']
+        fields = ['id', 'username', 'password', 'password2', 'mobile', 'sms_code', 'allow', 'token']
 
         extra_kwargs = {
             'username': {

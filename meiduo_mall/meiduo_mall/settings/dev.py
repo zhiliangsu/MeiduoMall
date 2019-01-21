@@ -229,4 +229,7 @@ CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 # 指定JWT token有效期
 JWT_AUTH = {
     'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
+
+    # 修改jwt登录后响应体函数
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'users.utils.jwt_response_payload_handler',
 }
