@@ -10,6 +10,7 @@ from rest_framework_jwt.settings import api_settings
 
 from .models import QQAuthUser
 from .utils import generate_save_user_token
+from .serializers import QQAuthUserSerializer
 
 logger = logging.getLogger('django')
 
@@ -61,6 +62,26 @@ class QQAuthUserView(APIView):
                 'username': user.username,
                 'user_id': user.id
             })
+
+    def post(self, request):
+
+        # 创建序列化器对象,进行反序列化
+        serializer = QQAuthUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # 手动生成token
+        jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER  # 加载生成载荷函数
+        jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER  # 加载生成token函数
+
+        payload = jwt_payload_handler(user)  # 生成载荷
+        token = jwt_encode_handler(payload)  # 根据载荷生成token
+
+        return Response({
+            'token': token,
+            'username': user.username,
+            'user_id': user.id
+        })
 
 
 class QQAuthURLView(APIView):
