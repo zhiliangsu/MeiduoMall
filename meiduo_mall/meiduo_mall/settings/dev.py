@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',  # cors
 
     'users.apps.UsersConfig',  # 注册用户的子应用
+    'oauth.apps.OauthConfig',  # QQ
 ]
 
 MIDDLEWARE = [
