@@ -239,3 +239,8 @@ JWT_AUTH = {
 AUTHENTICATION_BACKENDS = {
     'users.utils.UsernameMobileAuthBackend',  # 修改Django认证后端类
 }
+
+# QQ登录参数配置
+QQ_CLIENT_ID = '101514053'
+QQ_CLIENT_SECRET = '1075e75648566262ea35afa688073012'
+QQ_REDIRECT_URI = 'http://www.meiduo.site:8080/oauth_callback.html'
