@@ -14,5 +14,8 @@ urlpatterns = [
     url(r'^mobiles/(?P<mobile>1[3-9]\d{9})/count/$', views.MobileCountView.as_view()),
 
     # JWT登录
-    url(r'^authorizations/$', obtain_jwt_token)
+    url(r'^authorizations/$', obtain_jwt_token),
+
+    # 获取用户个人信息
+    url(r'^user/$', views.UserDetailView.as_view()),
 ]

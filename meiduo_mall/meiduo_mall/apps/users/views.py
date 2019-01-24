@@ -2,12 +2,24 @@ from django.shortcuts import render
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from .models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserDetailSerializer
 
 
 # Create your views here.
+class UserDetailView(APIView):
+    """提供用户个人信息接口"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        user = self.request.user
+        serializer = UserDetailSerializer(user)
+        return Response(serializer.data)
+
 
 # POST /users/
 class UserView(CreateAPIView):
