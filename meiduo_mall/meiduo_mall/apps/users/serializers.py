@@ -27,6 +27,7 @@ class EmailSerializer(serializers.ModelSerializer):
 
         return instance
 
+
 class UserDetailSerializer(serializers.ModelSerializer):
     """用户个人信息序列化器"""
 

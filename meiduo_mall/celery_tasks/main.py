@@ -1,5 +1,10 @@
 # celery启动文件(准备celery客户端)
+import os
+
 from celery import Celery
+
+# 配置celery如果需要用配置文件时去哪里加载
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meiduo_mall.settings.dev")
 
 # 1.创建celery客户端
 celery_app = Celery('meiduo_mall')
@@ -8,4 +13,4 @@ celery_app = Celery('meiduo_mall')
 celery_app.config_from_object('celery_tasks.config')
 
 # 3.注册异步任务(哪些任务可以进入到任务队列)
-celery_app.autodiscover_tasks(['celery_tasks.sms'])
+celery_app.autodiscover_tasks(['celery_tasks.sms', 'celery_tasks.email'])

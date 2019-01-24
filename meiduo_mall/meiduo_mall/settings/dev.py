@@ -244,3 +244,10 @@ AUTHENTICATION_BACKENDS = {
 QQ_CLIENT_ID = '101514053'
 QQ_CLIENT_SECRET = '1075e75648566262ea35afa688073012'
 QQ_REDIRECT_URI = 'http://www.meiduo.site:8080/oauth_callback.html'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_PORT = 25
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_HOST_USER = 'itcast99@163.com'  # 发送邮件的邮箱
+EMAIL_HOST_PASSWORD = 'python99'  # 在邮箱中设置的客户端授权密码
+EMAIL_FROM = 'python<itcast99@163.com>'  # 收件人看到的发件人
