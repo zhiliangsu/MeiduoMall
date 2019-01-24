@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.generics import CreateAPIView
+from rest_framework.generics import CreateAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -9,8 +9,26 @@ from .serializers import UserSerializer, UserDetailSerializer
 
 
 # Create your views here.
-class UserDetailView(APIView):
+# GET /user/
+class UserDetailView(RetrieveAPIView):
     """提供用户个人信息接口"""
+
+    # 指定权限,必须是通过认证的用户才能访问此接口(就是当前本网站的登录用户)
+    permission_classes = [IsAuthenticated]
+
+    # 指定查询集
+
+    # 指定序列化器
+    serializer_class = UserDetailSerializer
+
+    def get_object(self):  # 返回指定模型对象
+        return self.request.user
+
+
+"""
+# GET /user/
+class UserDetailView(APIView):
+    # 提供用户个人信息接口
 
     permission_classes = [IsAuthenticated]
 
@@ -19,6 +37,7 @@ class UserDetailView(APIView):
         user = self.request.user
         serializer = UserDetailSerializer(user)
         return Response(serializer.data)
+"""
 
 
 # POST /users/
