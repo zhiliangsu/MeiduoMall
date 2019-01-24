@@ -7,6 +7,26 @@ from rest_framework_jwt.settings import api_settings
 from .models import User
 
 
+class EmailSerializer(serializers.ModelSerializer):
+    """设置保存邮箱序列化器"""
+
+    class Meta:
+        model = User
+        fields = ['id', 'email']
+        extra_kwargs = {
+            'email': {
+                'required': True
+            }
+        }
+
+    def update(self, instance, validated_data):
+        instance.email = validated_data.get('email')
+        instance.save()
+
+        # 在此地发送邮箱
+
+        return instance
+
 class UserDetailSerializer(serializers.ModelSerializer):
     """用户个人信息序列化器"""
 
