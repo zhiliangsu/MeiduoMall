@@ -4,7 +4,7 @@ from django.conf import settings
 from celery_tasks.main import celery_app
 
 
-@celery_app(name='send_verify_email')
+@celery_app.task(name='send_verify_email')
 def send_verify_email(to_email, verify_url):
     """
     发邮件异步任务

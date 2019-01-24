@@ -5,6 +5,7 @@ from django_redis import get_redis_connection
 from rest_framework_jwt.settings import api_settings
 
 from .models import User
+from celery_tasks.email.tasks import send_verify_email
 
 
 class EmailSerializer(serializers.ModelSerializer):
@@ -23,7 +24,11 @@ class EmailSerializer(serializers.ModelSerializer):
         instance.email = validated_data.get('email')
         instance.save()
 
-        # 在此地发送邮箱
+        # 生成邮箱激活url
+        verify_url = 'http://www.baidu.com'
+
+        # 在此地发送激活邮件
+        send_verify_email.delay(instance.email, verify_url)
 
         return instance
 
