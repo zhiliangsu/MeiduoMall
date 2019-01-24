@@ -25,7 +25,9 @@ class EmailSerializer(serializers.ModelSerializer):
         instance.save()
 
         # 生成邮箱激活url
-        verify_url = 'http://www.baidu.com'
+        # verify_url = 'http://www.baidu.com'
+        # verify_url = 'http://www.meiduo.site:8080/success_verify_email.html?token=2'
+        verify_url = instance.generate_verify_email_url()
 
         # 在此地发送激活邮件
         send_verify_email.delay(instance.email, verify_url)
