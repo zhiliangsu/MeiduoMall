@@ -46,7 +46,9 @@ INSTALLED_APPS = [
 
     'users.apps.UsersConfig',  # 注册用户的子应用
     'oauth.apps.OauthConfig',  # QQ
-    'areas.apps.AreasConfig',
+    'areas.apps.AreasConfig',  # 省市区
+    'goods.apps.GoodsConfig',  # 商品
+    'contents.apps.ContentsConfig',  # 广告
 ]
 
 MIDDLEWARE = [
