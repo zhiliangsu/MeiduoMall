@@ -8,6 +8,16 @@ from .models import User, Address
 from celery_tasks.email.tasks import send_verify_email
 
 
+class AddressTitleSerializer(serializers.ModelSerializer):
+    """
+    地址标题
+    """
+
+    class Meta:
+        model = Address
+        fields = ('title',)
+
+
 class UserAddressSerializer(serializers.ModelSerializer):
     """
     用户地址序列化器
