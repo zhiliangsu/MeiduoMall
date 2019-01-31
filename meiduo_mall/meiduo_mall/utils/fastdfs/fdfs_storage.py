@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.files.storage import Storage
 from fdfs_client.client import Fdfs_client
 
@@ -5,9 +6,17 @@ from fdfs_client.client import Fdfs_client
 class FastDFSStorage(Storage):
     """自定义文件存储系统类"""
 
-    def __init__(self):
+    def __init__(self, client_conf=None, base_url=None):
         """初始化方法"""
-        pass
+        # if client_conf:
+        #     self.client_conf = client_conf
+        # else:
+        #     self.client_conf = settings.FDFS_CLIENT_CONF
+
+        # self.client_conf = settings.FDFS_CLIENT_CONF if client_conf == None else client_conf
+        # self.client_conf = client_conf if client_conf else settings.FDFS_CLIENT_CONF
+        self.client_conf = client_conf or settings.FDFS_CLIENT_CONF
+        self.base_url = base_url or settings.FDFS_BASE_URL
 
     def _open(self, name, mode='rb'):
         """打开文件,但是我们自定义文件存储系统类的目的,只是为了上传和下载,不需要打开,所有此方法什么也不做,直接pass"""
@@ -22,7 +31,9 @@ class FastDFSStorage(Storage):
         """
 
         # 1.创建fdfs客户端
-        client = Fdfs_client('meiduo_mall/utils/fastdfs/client.conf')
+        # client = Fdfs_client('meiduo_mall/utils/fastdfs/client.conf')
+        # client = Fdfs_client(settings.FDFS_CLIENT_CONF)
+        client = Fdfs_client(self.client_conf)
 
         # 2.上传文件
         # client.upload_by_filename()  # 如果是指定一个文件路径和文件名来上传文件用此方法, filename上传的图片文件有后缀
@@ -49,10 +60,16 @@ class FastDFSStorage(Storage):
         :param name: 此name是当初save方法中返回的file_id
         :return: storage ip:端口 + file_id
         """
-        return 'http://192.168.124.130:8888/' + name
+        # return 'http://192.168.124.130:8888/' + name
+        # return settings.FDFS_BASE_URL + name
+        return self.base_url + name
 
 
 """
+# FastDFS
+FDFS_BASE_URL = 'http://192.168.103.210:8888/'
+FDFS_CLIENT_CONF = os.path.join(BASE_DIR, 'utils/fastdfs/client.conf')
+
 {'Group name': 'group1',
  'Local file name': 'C:\\Users\\szl\\Desktop\\02.JPG',
  'Remote file_id': 'group1\\M00/00/00/wKh8glxS-iKAA7epAAIRPHnCDpg788.JPG',
