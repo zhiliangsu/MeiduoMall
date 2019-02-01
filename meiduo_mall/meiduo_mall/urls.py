@@ -30,4 +30,7 @@ urlpatterns = [
 
     # 省市区
     url(r'^', include('areas.urls')),
+
+    # 富文本编辑界面路由
+    url(r'^ckeditor/', include('ckeditor_uploader.urls')),
 ]
