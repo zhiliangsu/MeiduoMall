@@ -6,6 +6,53 @@ from rest_framework_jwt.settings import api_settings
 
 from .models import User, Address
 from celery_tasks.email.tasks import send_verify_email
+from goods.models import SKU
+
+
+class UserBrowseHistorySerializer(serializers.Serializer):
+    """浏览记录"""
+
+    sku_id = serializers.IntegerField(label='商品id', min_value=1)
+
+    def validate_sku_id(self, value):
+        """
+        对sku_id追加额外校验逻辑
+        :param value: sku_id
+        :return: value
+        """
+
+        try:
+            sku_id = SKU.objects.get(id=value)
+        except SKU.DoesNotExist:
+            raise serializers.ValidationError('sku_id不存在')
+
+        return value
+
+    def create(self, validated_data):
+        """重写此方法把sku_id存储到redis  validated_data: {'sku_id': 1}"""
+
+        # 创建redis连接对象
+        redis_conn = get_redis_connection('history')
+        # 获取user_id
+        user_id = self.context['request'].user.id
+        # 获取sku_id
+        sku_id = validated_data.get('sku_id')
+
+        # 创建管道对象
+        pl = redis_conn.pipeline()
+
+        # 先去重
+        # redis_conn.lrem(key, count, value)
+        pl.lrem('history_%d' % user_id, 0, sku_id)
+        # 存储到列表的最前面
+        pl.lpush('history_%d' % user_id, sku_id)
+        # 截取前5个
+        pl.ltrim('history_%d' % user_id, 0, 4)
+        # 执行管道
+        pl.execute()
+
+        # 返回
+        return validated_data
 
 
 class AddressTitleSerializer(serializers.ModelSerializer):
