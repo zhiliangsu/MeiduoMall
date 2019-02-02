@@ -22,5 +22,5 @@ def generate_static_list_search_html():
     template = loader.get_template('list.html')  # 加载模板
     html_text = template.render(context)  # 渲染模板,返回渲染好的html字符串
     file_path = os.path.join(settings.GENERATED_STATIC_HTML_FILES_DIR, 'list.html')
-    with open(file_path, 'w') as f:
+    with open(file_path, 'w', encoding='utf-8') as f:
         f.write(html_text)
