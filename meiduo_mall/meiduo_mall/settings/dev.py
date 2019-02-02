@@ -218,6 +218,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',  # 基础认证
     ),
 
+    # 全局分页
+    'DEFAULT_PAGINATION_CLASS': 'meiduo_mall.utils.paginations.StandardResultsSetPagination',
 }
 
 # 修改用户模型类  String model references must be of the form 'app_label.ModelName'
