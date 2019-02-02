@@ -19,6 +19,9 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
 
+    # 富文本编辑界面路由
+    url(r'^ckeditor/', include('ckeditor_uploader.urls')),
+
     # 包含发短信模块路由
     url(r'^', include('verifications.urls')),
 
@@ -31,6 +34,7 @@ urlpatterns = [
     # 省市区
     url(r'^', include('areas.urls')),
 
-    # 富文本编辑界面路由
-    url(r'^ckeditor/', include('ckeditor_uploader.urls')),
+    # 商品模块
+    url(r'^', include('goods.urls')),
+
 ]
