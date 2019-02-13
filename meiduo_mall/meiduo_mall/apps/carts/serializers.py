@@ -45,3 +45,9 @@ class CartDeleteSerializer(serializers.Serializer):
             raise serializers.ValidationError('商品sku_id不存在')
 
         return value
+
+
+class CartSelectedSerializer(serializers.Serializer):
+    """全选序列化器"""
+
+    selected = serializers.BooleanField(label='全选/取消全选')

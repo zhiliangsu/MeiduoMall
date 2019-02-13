@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_redis import get_redis_connection
 
-from .serializers import CartSerializer, CartSKUSerializer, CartDeleteSerializer
+from .serializers import CartSerializer, CartSKUSerializer, CartDeleteSerializer, CartSelectedSerializer
 from goods.models import SKU
 
 
@@ -218,3 +218,40 @@ class CartView(APIView):
                     response.delete_cookie('carts')
 
         return response
+
+
+class CartSelectedView(APIView):
+    """购物车全选"""
+
+    def perform_authentication(self, request):
+        """延后认证"""
+        pass
+
+    def post(self, request):
+
+        # 创建序列化器进行反序列化
+        serializer = CartSelectedSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        selected = serializer.validated_data.get('selected')
+
+        response = Response(serializer.data)
+
+        try:
+            user = request.user
+        except:
+            user = None
+        else:
+            # 已登录用户操作redis
+            redis_conn = get_redis_connection('cart')
+            # 获取redis中的hash字典
+            cart_redis_dict = redis_conn.hgetall('cart_%d' % user.id)
+            if selected:  # 判断是全选还是取消全选
+                # 如果是全选就把所有sku_id添加到set集合中
+                redis_conn.sadd('selected_%d' % user.id, *cart_redis_dict.keys())
+            else:
+                # 如果取消全选就把所有sku_id从set集合中移除
+                redis_conn.srem('selected_%d' % user.id, *cart_redis_dict.keys())
+
+        if not user:
+            # 未登录用户操作cookie
+            pass
