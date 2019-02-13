@@ -85,7 +85,31 @@ class CartView(APIView):
 
     def get(self, request):
         """查询购物车"""
-        pass
+
+        # 获取user,用于判断用户是否登录
+        try:
+            user = request.user
+            # 如果获取到user说明是已登录用户(操作redis数据库)
+        except:
+            # 如果获取user出现异常说明当前是未登录用户(获取cookie购物车数据)
+            user = None
+        else:
+            # 如果获取到user说明是已登录用户(操作redis数据库)
+            # 获取redis购物车数据
+            redis_conn = get_redis_connection('cart')
+            cart_redis_dict = redis_conn.hgetall('cart_%d' % user.id)
+            selected_ids = redis_conn.smembers('selected_%d' % user.id)
+
+            # 定义一个用来转换数据格式的大字典
+            cart_dict = {}
+            for sku_id, count in cart_redis_dict.items:
+                cart_dict[int(sku_id)] = {
+                    'count': int(count),
+                    'selected': sku_id in selected_ids
+                }
+
+        if not user:
+            pass
 
     def put(self, request):
         """修改购物车"""

@@ -19,3 +19,14 @@ class CartSerializer(serializers.Serializer):
             raise serializers.ValidationError('商品sku_id不存在')
 
         return value
+
+
+class CartSKUSerializer(serializers.ModelSerializer):
+    """查询购物车序列化器"""
+
+    count = serializers.IntegerField(label='商品数量')
+    selected = serializers.BooleanField(label='勾选状态')
+
+    class Meta:
+        model = SKU
+        fields = ['id', 'name', 'price', 'default_image_url', 'count', 'selected']
