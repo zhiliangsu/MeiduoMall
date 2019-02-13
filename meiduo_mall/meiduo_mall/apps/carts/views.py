@@ -5,6 +5,7 @@ from django.shortcuts import render
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django_redis import get_redis_connection
 
 from .serializers import CartSerializer
 
@@ -29,13 +30,22 @@ class CartView(APIView):
         count = serializer.validated_data.get('count')
         selected = serializer.validated_data.get('selected')
 
+        # 创建响应对象
+        response = Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
         try:
             user = request.user  # 获取登录用户  首次获取还会做认证
         except:
             user = None
         else:
             # 如果代码能继续向下走说明是登录用户, 存储购物车数据到redis
-            pass
+            # 创建redis连接对象
+            redis_conn = get_redis_connection('cart')
+            pl = redis_conn.pipeline()
+            pl.hincrby('cart_%d' % user.id, sku_id, count)
+            if selected:  # 判断当前商品是否勾选, 把勾选的商品sku_id添加到set集合中
+                pl.sadd('select_%d' % user.id, sku_id)
+            pl.execute()
 
         if not user:
             # 未登录用户存储到cookie
@@ -68,11 +78,10 @@ class CartView(APIView):
             cart_str_bytes = base64.b64encode(cart_ascii_bytes)
             cart_str = cart_str_bytes.decode()
 
-            # 5.创建并返回响应对象
-            response = Response(data=serializer.data, status=status.HTTP_201_CREATED)
+            # 设置购物车数据到cookie
             response.set_cookie('carts', cart_str)
 
-            return response
+        return response
 
     def get(self, request):
         """查询购物车"""
