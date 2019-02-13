@@ -109,7 +109,11 @@ class CartView(APIView):
                 }
 
         if not user:
-            pass
+            # 如果获取user出现异常说明当前是未登录用户(获取cookie购物车数据)
+            cart_str = request.COOKIES.get('carts')
+            # 判断是否存在cookie购物车数据
+            if cart_str:
+                cart_dict = pickle.loads(base64.b64decode(cart_str.encode()))
 
     def put(self, request):
         """修改购物车"""
