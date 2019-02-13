@@ -227,7 +227,7 @@ class CartSelectedView(APIView):
         """延后认证"""
         pass
 
-    def post(self, request):
+    def put(self, request):
 
         # 创建序列化器进行反序列化
         serializer = CartSelectedSerializer(data=request.data)
@@ -254,4 +254,14 @@ class CartSelectedView(APIView):
 
         if not user:
             # 未登录用户操作cookie
-            pass
+            cart_str = request.COOKIES.get('carts')
+            if cart_str:
+                cart_dict = pickle.loads(base64.b64decode(cart_str.encode()))
+
+                for sku_id_dict in cart_dict.values():
+                    sku_id_dict['selected'] = selected
+
+                cart_str = base64.b64encode(pickle.dumps(cart_dict)).decode()
+                response.set_cookie('carts', cart_str)
+
+        return response
