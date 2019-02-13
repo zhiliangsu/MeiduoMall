@@ -45,7 +45,7 @@ class CartView(APIView):
             pl = redis_conn.pipeline()
             pl.hincrby('cart_%d' % user.id, sku_id, count)
             if selected:  # 判断当前商品是否勾选, 把勾选的商品sku_id添加到set集合中
-                pl.sadd('select_%d' % user.id, sku_id)
+                pl.sadd('selected_%d' % user.id, sku_id)
             pl.execute()
 
         if not user:
@@ -103,7 +103,7 @@ class CartView(APIView):
 
             # 定义一个用来转换数据格式的大字典
             cart_dict = {}
-            for sku_id, count in cart_redis_dict.items:
+            for sku_id, count in cart_redis_dict.items():
                 cart_dict[int(sku_id)] = {
                     'count': int(count),
                     'selected': sku_id in selected_ids
@@ -134,7 +134,7 @@ class CartView(APIView):
     def put(self, request):
         """修改购物车"""
 
-        serializer = CartSerializer(request.data)
+        serializer = CartSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         sku_id = serializer.validated_data.get('sku_id')
         count = serializer.validated_data.get('count')
@@ -148,7 +148,7 @@ class CartView(APIView):
             user = None
         else:
             # 已登录用户操作redis购物车数据
-            redis_conn = get_redis_connection('carts')
+            redis_conn = get_redis_connection('cart')
             pl = redis_conn.pipeline()
             # 修改指定sku_id的购物车数据,把hash字典中指定sku_id的value覆盖掉
             pl.hset('cart_%d' % user.id, sku_id, count)
