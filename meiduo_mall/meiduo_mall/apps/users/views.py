@@ -8,15 +8,31 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
 from django_redis import get_redis_connection
+from rest_framework_jwt.views import ObtainJSONWebToken
 
 from .models import User, Address
 from .serializers import UserSerializer, UserDetailSerializer, EmailSerializer, UserAddressSerializer
 from .serializers import AddressTitleSerializer, UserBrowseHistorySerializer
 from goods.models import SKU
 from goods.serializers import SKUSerializer
+from carts.utils import merge_cart_cookie_to_redis
 
 
 # Create your views here.
+class UserAuthorizeView(ObtainJSONWebToken):
+    """重写账号密码登录视图"""
+
+    def post(self, request, *args, **kwargs):
+        response = super(UserAuthorizeView, self).post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            user = serializer.object.get('user') or request.user
+            merge_cart_cookie_to_redis(request, response, user)
+
+        return response
+
+
 # POST/GET /browse_histories/
 class UserBrowseHistoryView(CreateAPIView):
     """用户浏览记录"""

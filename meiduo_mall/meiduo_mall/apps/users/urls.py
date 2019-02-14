@@ -16,7 +16,8 @@ urlpatterns = [
 
     # JWT登录
     # 账号密码登录时需要 做cookie购物车合并到redis操作
-    url(r'^authorizations/$', obtain_jwt_token),
+    # url(r'^authorizations/$', obtain_jwt_token),
+    url(r'^authorizations/$', views.UserAuthorizeView.as_view()),
 
     # 获取用户个人信息
     url(r'^user/$', views.UserDetailView.as_view()),
