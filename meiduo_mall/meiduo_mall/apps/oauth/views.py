@@ -56,6 +56,7 @@ class QQAuthUserView(APIView):
             payload = jwt_payload_handler(user)  # 生成载荷
             token = jwt_encode_handler(payload)  # 根据载荷生成token
 
+            # 做cookie购物车合并到redis操作
             return Response({
                 'token': token,
                 'username': user.username,
@@ -76,6 +77,7 @@ class QQAuthUserView(APIView):
         payload = jwt_payload_handler(user)  # 生成载荷
         token = jwt_encode_handler(payload)  # 根据载荷生成token
 
+        # 做cookie购物车合并到redis操作
         return Response({
             'token': token,
             'username': user.username,

@@ -15,6 +15,7 @@ urlpatterns = [
     url(r'^mobiles/(?P<mobile>1[3-9]\d{9})/count/$', views.MobileCountView.as_view()),
 
     # JWT登录
+    # 账号密码登录时需要 做cookie购物车合并到redis操作
     url(r'^authorizations/$', obtain_jwt_token),
 
     # 获取用户个人信息
