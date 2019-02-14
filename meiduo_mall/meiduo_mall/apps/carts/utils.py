@@ -37,11 +37,11 @@ def merge_cart_cookie_to_redis(request, response, user):
     pl = redis_conn.pipeline()
 
     # 遍历cookie字典,将sku_id和count直接加入redis中的hash字典和set集合,如果cookie中的sku_id在hash中已存在,会以cookie的为准覆盖hash
-    for sku_id, sku_id_dict in cookie_cart_dict:
+    for sku_id, sku_id_dict in cookie_cart_dict.items():
         pl.hset('cart_%d' % user.id, sku_id, sku_id_dict['count'])
         if sku_id_dict['selected']:
             pl.sadd('selected_%d' % user.id, sku_id)
         pl.execute()
 
     # 清空cookie购物车数据
-    response.delete_cookies('carts')
+    response.delete_cookie('carts')
