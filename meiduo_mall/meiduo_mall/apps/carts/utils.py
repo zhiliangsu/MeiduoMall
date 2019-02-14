@@ -43,21 +43,21 @@ def merge_cart_cookie_to_redis(request, response, user):
     for sku_id, count in redis_cart_dict.items():
         temp_cart_dict[int(sku_id)] = {
             'count': int(count),
-            'selected': sku_id in redis_selected_ids
         }
 
     # 把cookie购物车数据也存入到中间合并大字典中
     for sku_id, sku_id_dict in cookie_cart_dict.items():
         temp_cart_dict[sku_id] = {
             'count': sku_id_dict['count'],
-            'selected': sku_id_dict['selected'] or sku_id.encode() in redis_selected_ids
         }
+        if sku_id_dict['selected']:
+            redis_selected_ids.add(sku_id)
 
     # 把合并后的大字典分别设置到redis中的hash字典和set集合中
-    for sku_id, sku_id_dict in temp_cart_dict.items():
-        redis_conn.hset('cart_%d' % user.id, sku_id, sku_id_dict['count'])
-        if sku_id_dict['selected']:
-            redis_conn.sadd('selected_%d' % user.id, sku_id)
+    pl = redis_conn.pipeline()
+    pl.hset('cart_%d' % user.id, temp_cart_dict)
+    pl.sadd('selected_%d' % user.id, *redis_selected_ids)
+    pl.execute()
 
     # 清空cookie购物车数据
     response.delete_cookies('carts')
