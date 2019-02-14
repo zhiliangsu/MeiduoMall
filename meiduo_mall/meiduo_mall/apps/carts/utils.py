@@ -23,7 +23,7 @@ def merge_cart_cookie_to_redis(request, response, user):
     """
 
     # 获取cookie购物车数据
-    cart_str = request.COOKIES.get('cart')
+    cart_str = request.COOKIES.get('carts')
 
     # 判断cookie中是否存在购物车数据,如不存在,直接return
     if not cart_str:
@@ -32,32 +32,16 @@ def merge_cart_cookie_to_redis(request, response, user):
     # 把cart_str转换成cart_dict
     cookie_cart_dict = pickle.loads(base64.b64decode(cart_str.encode()))
 
-    # 定义一个中间合并大字典{}
-    temp_cart_dict = {}
-
-    # 获取redis购物车数据并存入中间合并大字典中
-    redis_conn = get_redis_connection('carts')
-    redis_cart_dict = redis_conn.hgetall('cart_%d' % user.id)
-    redis_selected_ids = redis_conn.smembers('selected_%d' % user.id)
-
-    for sku_id, count in redis_cart_dict.items():
-        temp_cart_dict[int(sku_id)] = {
-            'count': int(count),
-        }
-
-    # 把cookie购物车数据也存入到中间合并大字典中
-    for sku_id, sku_id_dict in cookie_cart_dict.items():
-        temp_cart_dict[sku_id] = {
-            'count': sku_id_dict['count'],
-        }
-        if sku_id_dict['selected']:
-            redis_selected_ids.add(sku_id)
-
-    # 把合并后的大字典分别设置到redis中的hash字典和set集合中
+    # 创建redis连接对象
+    redis_conn = get_redis_connection('cart')
     pl = redis_conn.pipeline()
-    pl.hset('cart_%d' % user.id, temp_cart_dict)
-    pl.sadd('selected_%d' % user.id, *redis_selected_ids)
-    pl.execute()
+
+    # 遍历cookie字典,将sku_id和count直接加入redis中的hash字典和set集合,如果cookie中的sku_id在hash中已存在,会以cookie的为准覆盖hash
+    for sku_id, sku_id_dict in cookie_cart_dict:
+        pl.hset('cart_%d' % user.id, sku_id, sku_id_dict['count'])
+        if sku_id_dict['selected']:
+            pl.sadd('selected_%d' % user.id, sku_id)
+        pl.execute()
 
     # 清空cookie购物车数据
     response.delete_cookies('carts')
