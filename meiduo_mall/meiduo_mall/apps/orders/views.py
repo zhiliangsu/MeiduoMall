@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
 
 from goods.models import SKU
-from .serializers import OrderSettlementSerializer
+from .serializers import OrderSettlementSerializer, CommitOrderSerializer
 
 
 # Create your views here.
