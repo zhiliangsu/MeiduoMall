@@ -1,11 +1,12 @@
 # from datetime import timezone
 # from time import timezone
 from django.utils import timezone
+from django_redis import get_redis_connection
 from rest_framework import serializers
 from decimal import Decimal
 
 from goods.models import SKU
-from orders.models import OrderInfo
+from orders.models import OrderInfo, OrderGoods
 
 
 class CommitOrderSerializer(serializers.ModelSerializer):
@@ -48,7 +49,7 @@ class CommitOrderSerializer(serializers.ModelSerializer):
                   else OrderInfo.ORDER_STATUS_ENUM['UNSEND'])
 
         # 保存订单基本信息 OrderInfo（一）
-        OrderInfo.objects.create(
+        order = OrderInfo.objects.create(
             order_id=order_id,
             user=user,
             address=address,
@@ -60,14 +61,55 @@ class CommitOrderSerializer(serializers.ModelSerializer):
         )
 
         # 从redis读取购物车中被勾选的商品信息
+        redis_conn = get_redis_connection('cart')
+        # {b'16': 1, b'1':1}
+        redis_cart_dict = redis_conn.hgetall('cart_%d' % user.id)
+        # {b'16'}
+        redis_selected_ids = redis_conn.smembers('selected_%d' % user.id)
+
+        cart_selected_dict = {}
+        # for sku_id, count in redis_cart_dict.items():
+        #     if sku_id in redis_selected_ids:
+        #         cart_selected_dict[int(sku_id)] = int(count)
+        for sku_id in redis_selected_ids:
+            cart_selected_dict[int(sku_id)] = int(redis_cart_dict[sku_id])
+
         # 遍历购物车中被勾选的商品信息
-        # 获取sku对象
-        # 判断库存
-        # 减少库存，增加销量SKU
-        # 修改SPU销量
-        # 保存订单商品信息 OrderGoods（多）
-        # 累加计算总数量和总价
+        for sku_id in cart_selected_dict:
+            # 获取sku对象
+            sku = SKU.objects.get(id=sku_id)
+            # 获取当前sku_id商品要购买的数量
+            sku_count = cart_selected_dict[sku_id]
+
+            # 判断库存
+            if sku_count > sku.stock:
+                raise serializers.ValidationError('库存不足')
+
+            # 减少库存，增加销量SKU
+            sku.stock -= sku_count
+            sku.sales += sku_count
+            sku.save()
+
+            # 修改SPU销量
+            spu = sku.goods
+            spu.sales += sku_count
+            spu.save()
+
+            # 保存订单商品信息 OrderGoods（多）
+            OrderGoods.objects.create(
+                order=order,
+                sku=sku,
+                count=sku_count,
+                price=sku.price
+            )
+            # 累加计算总数量和总价
+            order.total_count += sku_count
+            order.total_amount += (sku.price * sku_count)
+
         # 最后加入邮费和保存订单信息
+        order.total_amount += order.freight
+        order.save()
+        
         # 清除购物车中已结算的商品
         pass
 
