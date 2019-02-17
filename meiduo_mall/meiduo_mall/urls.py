@@ -43,4 +43,7 @@ urlpatterns = [
     # 订单模块
     url(r'^', include('orders.urls')),
 
+    # 支付宝模块
+    url(r'^', include('payment.urls')),
+
 ]
