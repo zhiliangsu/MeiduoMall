@@ -2,6 +2,7 @@
 # from time import timezone
 from django.utils import timezone
 from django_redis import get_redis_connection
+from django.db import transaction
 from rest_framework import serializers
 from decimal import Decimal
 
@@ -21,16 +22,17 @@ class CommitOrderSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'address': {
                 'write_only': True,
-                'require': True,
+                'required': True,
             },
             'pay_method': {
                 'write_only': True,
-                'require': True,
+                'required': True,
             }
         }
 
     def create(self, validated_data):
         """重写序列化器的create方法进行存储订单表/订单商品"""
+        # 订单基本信息表 订单商品表 sku spu 四个表要么一起成功,要么一起失败
 
         # 获取当前保存订单时需要的信息
         # 获取用户对象
@@ -48,70 +50,85 @@ class CommitOrderSerializer(serializers.ModelSerializer):
                   if OrderInfo.PAY_METHODS_ENUM['ALIPAY'] == pay_method
                   else OrderInfo.ORDER_STATUS_ENUM['UNSEND'])
 
-        # 保存订单基本信息 OrderInfo（一）
-        order = OrderInfo.objects.create(
-            order_id=order_id,
-            user=user,
-            address=address,
-            total_count=0,
-            total_amount=Decimal('0.00'),
-            freight=Decimal('10.00'),
-            pay_method=pay_method,
-            status=status
-        )
+        # 开始一个事务
+        with transaction.atomic():
 
-        # 从redis读取购物车中被勾选的商品信息
-        redis_conn = get_redis_connection('cart')
-        # {b'16': 1, b'1':1}
-        redis_cart_dict = redis_conn.hgetall('cart_%d' % user.id)
-        # {b'16'}
-        redis_selected_ids = redis_conn.smembers('selected_%d' % user.id)
+            # 创建事务保存点
+            save_point = transaction.savepoint()
 
-        cart_selected_dict = {}
-        # for sku_id, count in redis_cart_dict.items():
-        #     if sku_id in redis_selected_ids:
-        #         cart_selected_dict[int(sku_id)] = int(count)
-        for sku_id in redis_selected_ids:
-            cart_selected_dict[int(sku_id)] = int(redis_cart_dict[sku_id])
+            try:
 
-        # 遍历购物车中被勾选的商品信息
-        for sku_id in cart_selected_dict:
-            # 获取sku对象
-            sku = SKU.objects.get(id=sku_id)
-            # 获取当前sku_id商品要购买的数量
-            sku_count = cart_selected_dict[sku_id]
+                # 保存订单基本信息 OrderInfo（一）
+                order = OrderInfo.objects.create(
+                    order_id=order_id,
+                    user=user,
+                    address=address,
+                    total_count=0,
+                    total_amount=Decimal('0.00'),
+                    freight=Decimal('10.00'),
+                    pay_method=pay_method,
+                    status=status
+                )
 
-            # 判断库存
-            if sku_count > sku.stock:
-                raise serializers.ValidationError('库存不足')
+                # 从redis读取购物车中被勾选的商品信息
+                redis_conn = get_redis_connection('cart')
+                # {b'16': 1, b'1':1}
+                redis_cart_dict = redis_conn.hgetall('cart_%d' % user.id)
+                # {b'16'}
+                redis_selected_ids = redis_conn.smembers('selected_%d' % user.id)
 
-            # 减少库存，增加销量SKU
-            sku.stock -= sku_count
-            sku.sales += sku_count
-            sku.save()
+                # 把要购买的商品id和count重新包到一个字典
+                cart_selected_dict = {}
+                # for sku_id, count in redis_cart_dict.items():
+                #     if sku_id in redis_selected_ids:
+                #         cart_selected_dict[int(sku_id)] = int(count)
+                for sku_id in redis_selected_ids:
+                    cart_selected_dict[int(sku_id)] = int(redis_cart_dict[sku_id])
 
-            # 修改SPU销量
-            spu = sku.goods
-            spu.sales += sku_count
-            spu.save()
+                # 遍历购物车中被勾选的商品信息
+                for sku_id in cart_selected_dict:
+                    # 获取sku对象
+                    sku = SKU.objects.get(id=sku_id)
+                    # 获取当前sku_id商品要购买的数量
+                    sku_count = cart_selected_dict[sku_id]
 
-            # 保存订单商品信息 OrderGoods（多）
-            OrderGoods.objects.create(
-                order=order,
-                sku=sku,
-                count=sku_count,
-                price=sku.price
-            )
-            # 累加计算总数量和总价
-            order.total_count += sku_count
-            order.total_amount += (sku.price * sku_count)
+                    # 判断库存
+                    if sku_count > sku.stock:
+                        raise serializers.ValidationError('库存不足')
 
-        # 最后加入邮费和保存订单信息
-        order.total_amount += order.freight
-        order.save()
-        
+                    # 减少库存，增加销量SKU
+                    sku.stock -= sku_count
+                    sku.sales += sku_count
+                    sku.save()
+
+                    # 修改SPU销量
+                    spu = sku.goods
+                    spu.sales += sku_count
+                    spu.save()
+
+                    # 保存订单商品信息 OrderGoods（多）
+                    OrderGoods.objects.create(
+                        order=order,
+                        sku=sku,
+                        count=sku_count,
+                        price=sku.price
+                    )
+                    # 累加计算总数量和总价
+                    order.total_count += sku_count
+                    order.total_amount += (sku.price * sku_count)
+
+                # 最后加入邮费和保存订单信息
+                order.total_amount += order.freight
+                order.save()
+            except Exception:
+                # 暴力回滚,无论中间出现什么问题全部回滚
+                transaction.savepoint_rollback(save_point)
+            else:
+                # 如果中间没有出现异常提交事务
+                transaction.savepoint_commit(save_point)
+
         # 清除购物车中已结算的商品
-        pass
+        return order
 
 
 class CartSKUSerializer(serializers.ModelSerializer):
