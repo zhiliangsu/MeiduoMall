@@ -102,8 +102,9 @@ class CommitOrderSerializer(serializers.ModelSerializer):
                         if sku_count > sku.stock:
                             raise serializers.ValidationError('库存不足')
 
-                        import time
-                        time.sleep(5)
+                        # 只用于测试
+                        # import time
+                        # time.sleep(5)
 
                         # 计算新的库存和销量
                         new_stock = origin_stock - sku_count
