@@ -87,35 +87,55 @@ class CommitOrderSerializer(serializers.ModelSerializer):
 
                 # 遍历购物车中被勾选的商品信息
                 for sku_id in cart_selected_dict:
-                    # 获取sku对象
-                    sku = SKU.objects.get(id=sku_id)
-                    # 获取当前sku_id商品要购买的数量
-                    sku_count = cart_selected_dict[sku_id]
 
-                    # 判断库存
-                    if sku_count > sku.stock:
-                        raise serializers.ValidationError('库存不足')
+                    while True:
+                        # 获取sku对象
+                        sku = SKU.objects.get(id=sku_id)
+                        # 获取当前sku_id商品要购买的数量
+                        sku_count = cart_selected_dict[sku_id]
 
-                    # 减少库存，增加销量SKU
-                    sku.stock -= sku_count
-                    sku.sales += sku_count
-                    sku.save()
+                        # 获取查询出sku那一刻的库存和数量
+                        origin_stock = sku.stock
+                        origin_sales = sku.sales
 
-                    # 修改SPU销量
-                    spu = sku.goods
-                    spu.sales += sku_count
-                    spu.save()
+                        # 判断库存
+                        if sku_count > sku.stock:
+                            raise serializers.ValidationError('库存不足')
 
-                    # 保存订单商品信息 OrderGoods（多）
-                    OrderGoods.objects.create(
-                        order=order,
-                        sku=sku,
-                        count=sku_count,
-                        price=sku.price
-                    )
-                    # 累加计算总数量和总价
-                    order.total_count += sku_count
-                    order.total_amount += (sku.price * sku_count)
+                        import time
+                        time.sleep(5)
+
+                        # 计算新的库存和销量
+                        new_stock = origin_stock - sku_count
+                        new_sales = origin_sales + sku_count
+
+                        # 减少库存，增加销量SKU ==> 乐观锁(使用乐观锁需要更改数据库的事务隔离级别为READ_COMMITTED)
+                        result = SKU.objects.filter(id=sku_id, stock=origin_stock).update(stock=new_stock, sales=new_sales)
+
+                        if result == 0:
+                            continue  # 跳出本次循环进入下一次
+
+                        # sku.stock -= sku_count
+                        # sku.sales += sku_count
+                        # sku.save()
+
+                        # 修改SPU销量
+                        spu = sku.goods
+                        spu.sales += sku_count
+                        spu.save()
+
+                        # 保存订单商品信息 OrderGoods（多）
+                        OrderGoods.objects.create(
+                            order=order,
+                            sku=sku,
+                            count=sku_count,
+                            price=sku.price
+                        )
+                        # 累加计算总数量和总价
+                        order.total_count += sku_count
+                        order.total_amount += (sku.price * sku_count)
+
+                        break  # 跳出无限循环,继续对下一个sku_id进行下单
 
                 # 最后加入邮费和保存订单信息
                 order.total_amount += order.freight
@@ -123,6 +143,7 @@ class CommitOrderSerializer(serializers.ModelSerializer):
             except Exception:
                 # 暴力回滚,无论中间出现什么问题全部回滚
                 transaction.savepoint_rollback(save_point)
+                raise
             else:
                 # 如果中间没有出现异常提交事务
                 transaction.savepoint_commit(save_point)
