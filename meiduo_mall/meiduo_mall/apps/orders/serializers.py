@@ -110,7 +110,8 @@ class CommitOrderSerializer(serializers.ModelSerializer):
                         new_sales = origin_sales + sku_count
 
                         # 减少库存，增加销量SKU ==> 乐观锁(使用乐观锁需要更改数据库的事务隔离级别为READ_COMMITTED)
-                        result = SKU.objects.filter(id=sku_id, stock=origin_stock).update(stock=new_stock, sales=new_sales)
+                        result = SKU.objects.filter(id=sku_id, stock=origin_stock).update(stock=new_stock,
+                                                                                          sales=new_sales)
 
                         if result == 0:
                             continue  # 跳出本次循环进入下一次
@@ -149,6 +150,11 @@ class CommitOrderSerializer(serializers.ModelSerializer):
                 transaction.savepoint_commit(save_point)
 
         # 清除购物车中已结算的商品
+        pl = redis_conn.pipeline()
+        pl.hdel('cart_%d' % user.id, *redis_selected_ids)
+        pl.srem('selected_%d' % user.id, *redis_selected_ids)
+        pl.execute()
+
         return order
 
 
