@@ -15,9 +15,12 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
+import xadmin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    # xadmin
+    url(r'xadmin/', include(xadmin.site.urls)),
 
     # 富文本编辑界面路由
     url(r'^ckeditor/', include('ckeditor_uploader.urls')),
