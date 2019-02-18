@@ -7,6 +7,9 @@ __pycache__/
 requirements.txt
 .idea/
 logs/*.log
+# ignore uwsgi.log and uwsgi.pid
+uwsgi.log
+uwsgi.pid
 
 # C extensions
 *.so
