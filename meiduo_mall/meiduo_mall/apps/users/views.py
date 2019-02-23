@@ -12,7 +12,7 @@ from rest_framework_jwt.views import ObtainJSONWebToken
 
 from .models import User, Address
 from .serializers import UserSerializer, UserDetailSerializer, EmailSerializer, UserAddressSerializer
-from .serializers import AddressTitleSerializer, UserBrowseHistorySerializer
+from .serializers import AddressTitleSerializer, UserBrowseHistorySerializer, PasswordModificationSerializer
 from goods.models import SKU
 from goods.serializers import SKUSerializer
 from carts.utils import merge_cart_cookie_to_redis
@@ -246,3 +246,16 @@ class MobileCountView(APIView):
         }
 
         return Response(data)
+
+
+# PUT /user/(?P<user_id>\d+)/password/
+class UpdatePasswordView(UpdateAPIView):
+    """修改密码"""
+
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = PasswordModificationSerializer
+
+    def get_object(self):
+        user_id = self.kwargs.get('user_id')
+        return User.objects.get(id=user_id)

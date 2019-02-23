@@ -223,3 +223,38 @@ class UserSerializer(serializers.ModelSerializer):
         # 创建序列化对象时,如果只给instance参数传递实参,此时这个序列化器只会做序列化操作,只能通过.data属性获取序列化后的字典
 
         return user
+
+
+class PasswordModificationSerializer(serializers.Serializer):
+    """修改密码序列化器"""
+
+    old_password = serializers.CharField(label='旧密码', write_only=True)
+    password = serializers.CharField(label='新密码', write_only=True, min_length=8, max_length=20)
+    password2 = serializers.CharField(label='确认新密码', write_only=True, min_length=8, max_length=20)
+
+    def validate_old_password(self, value):
+        """校验原密码是否输入正确"""
+
+        user = self.context['request'].user
+        if user.check_password(value):
+            return value
+        else:
+            raise serializers.ValidationError('原密码输入不正确')
+
+    def validate(self, attrs):
+        """校验新密码"""
+
+        # 判断新密码是否和原密码一样
+        if attrs['old_password'] == attrs['password']:
+            raise serializers.ValidationError('新密码不能与原密码一样')
+
+        # 判断两次输入的密码是否相等
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError('两次输入的密码不一致')
+        return attrs
+
+    def update(self, instance, validated_data):
+        """保存并更新密码"""
+        instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
