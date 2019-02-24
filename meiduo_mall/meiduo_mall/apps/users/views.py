@@ -1,3 +1,8 @@
+import logging
+from random import randint
+
+from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import action
@@ -10,12 +15,18 @@ from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
 from django_redis import get_redis_connection
 from rest_framework_jwt.views import ObtainJSONWebToken
 
+from oauth.utils import generate_save_user_token, check_save_user_token
 from .models import User, Address
 from .serializers import UserSerializer, UserDetailSerializer, EmailSerializer, UserAddressSerializer
 from .serializers import AddressTitleSerializer, UserBrowseHistorySerializer, PasswordModificationSerializer
 from goods.models import SKU
 from goods.serializers import SKUSerializer
 from carts.utils import merge_cart_cookie_to_redis
+from meiduo_mall.utils.captcha.captcha import captcha
+from celery_tasks.sms.tasks import send_sms_code
+from . import constants
+
+logger = logging.getLogger('django')
 
 
 # Create your views here.
@@ -249,13 +260,190 @@ class MobileCountView(APIView):
 
 
 # PUT /user/(?P<user_id>\d+)/password/
-class UpdatePasswordView(UpdateAPIView):
-    """修改密码"""
+class UpdatePasswordView(CreateAPIView, UpdateAPIView):
+    """修改/重置密码"""
 
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     serializer_class = PasswordModificationSerializer
 
     def get_object(self):
         user_id = self.kwargs.get('user_id')
-        return User.objects.get(id=user_id)
+        user = User.objects.get(id=user_id)
+        if user and user.is_authenticated:
+            return user
+        else:
+            return Response({'message': '未登录用户不允许修改密码'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def post(self, request, *args, **kwargs):
+
+        # 获取参数
+        user_id = kwargs.get('user_id')
+        password = request.data.get('password')
+        password2 = request.data.get('password2')
+        access_token = request.data.get('access_token')
+
+        mobile = check_save_user_token(access_token)
+        if not mobile:
+            return Response({'message': '操作超时,请重新操作'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if password != password2:
+            return Response({'message': '两次输入的密码不一致'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id, mobile=mobile)
+        except User.DoesNotExist:
+            return Response({'message': '查询用户对象异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        user.set_password(password)
+        user.save()
+
+        return Response({'message': 'ok'})
+
+
+# GET url(r'^/image_codes/(?P<image_code_id>[a-z0-9-]{36})/$', views.ImageView.as_view())
+class ImageView(APIView):
+    """获取图片验证码"""
+
+    def get(self, request, image_code_id):
+        redis_conn = get_redis_connection('verify_codes')
+        image_name, real_image_code, image_data = captcha.generate_captcha()
+        logger.info(real_image_code)
+        try:
+            redis_conn.setex('CODEID_' + image_code_id, constants.IMAGE_CODE_REDIS_EXPIRES, real_image_code)
+        except Exception:
+            return HttpResponse({'message': '保存图片验证码失败'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 使用Response会报错, why?
+        return HttpResponse(image_data, content_type='image/JPEG')
+
+
+# GET url(r'^accounts/(?P<username>\w{5,20})/sms/token/$', views.UserAccountView.as_view())
+class UserAccountView(APIView):
+    """输入账户名"""
+
+    def get(self, request, username):
+
+        # 获取参数
+        image_code = request.query_params.get('text')
+        image_code_id = request.query_params.get('image_code_id')
+
+        try:
+            user = User.objects.filter(Q(username=username) | Q(mobile=username)).first()
+        except User.DoesNotExist:
+            return Response({'message': '查询用户对象异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not user:
+            return Response({'message': '此账户不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 建立Redis连接对象并校验图片验证码
+        redis_conn = get_redis_connection('verify_codes')
+        try:
+            real_image_code = redis_conn.get('CODEID_' + image_code_id)
+        except Exception:
+            return Response({'message': '获取真实的图片验证码异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not real_image_code:
+            return Response({'message': '图片验证码过期了'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            try:
+                redis_conn.delete('CODEID_' + image_code_id)
+            except Exception:
+                return Response({'message': '删除图片验证码异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if image_code.lower() != real_image_code.decode().lower():
+            return Response({'message': '图片验证码填写错误'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 构造字典,响应mobile和access_token
+        # 使用itdangerous生成access_token返回给前端(有效期10分钟)
+        access_token = generate_save_user_token(user.mobile)
+        mobile = user.mobile[:3] + '****' + user.mobile[-4:]
+
+        data = {
+            'mobile': mobile,
+            'access_token': access_token
+        }
+
+        return Response(data)
+
+
+# GET url(r'^sms_codes/$', views.SMSView.as_view())
+class SMSView(APIView):
+    """获取短信验证码"""
+
+    def get(self, request):
+        # 获取access_token并校验
+        access_token = request.query_params.get('access_token')
+        mobile = check_save_user_token(access_token)
+        if not mobile:
+            return Response({'message': '操作超时,请重新操作'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 创建连接对象
+        redis_conn = get_redis_connection('verify_codes')
+        flag = redis_conn.get('SENDFLAG_%s' % mobile)
+        if flag:  # 如果if成立说明此手机号60秒内发过短信
+            return Response({'message': '频繁发送短信'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 生成短信验证码
+        sms_code = '%06d' % randint(0, 999999)
+        logger.info(sms_code)
+
+        pl = redis_conn.pipeline()
+        pl.setex('SMSCODE_%s' % mobile, constants.SMS_CODE_REDIS_EXPIRES, sms_code)
+        pl.setex('SENDFLAG_%s' % mobile, constants.SEND_SMS_CODE_INTERVAL, 1)
+        pl.execute()
+
+        # 4.集成容联云通讯发送短信验证码
+        # CCP().send_template_sms(mobile, [sms_code, constants.SMS_CODE_REDIS_EXPIRES // 60], 1)
+        # 触发异步任务(让发短信不用阻塞主线程)
+        send_sms_code.delay(mobile, sms_code)
+
+        # 5.响应结果
+        return Response({'message': 'ok'})
+
+
+# GET url(r'^accounts/(?P<username>\w{5,20})/password/token/$', views.VerificationView.as_view())
+class VerificationView(APIView):
+    """验证身份"""
+
+    def get(self, request, username):
+
+        # 获取参数
+        sms_code = request.query_params.get('sms_code')
+
+        try:
+            user = User.objects.filter(Q(username=username) | Q(mobile=username)).first()
+        except User.DoesNotExist:
+            return Response({'message': '查询用户对象异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not user:
+            return Response({'message': '此账户不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 建立Redis连接对象并校验短信验证码
+        redis_conn = get_redis_connection('verify_codes')
+        try:
+            real_sms_code = redis_conn.get('SMSCODE_%s' % user.mobile)
+        except Exception:
+            return Response({'message': '获取真实的图片验证码异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not real_sms_code:
+            return Response({'message': '图片验证码过期了'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            try:
+                redis_conn.delete('SMSCODE_%s' % user.mobile)
+            except Exception:
+                return Response({'message': '删除图片验证码异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if sms_code != real_sms_code.decode():
+            return Response({'message': '图片验证码填写错误'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 构造字典,响应mobile和access_token
+        # 使用itdangerous生成access_token返回给前端(有效期10分钟)
+        access_token = generate_save_user_token(user.mobile)
+
+        data = {
+            'user_id': user.id,
+            'access_token': access_token
+        }
+
+        return Response(data)

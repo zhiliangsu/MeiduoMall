@@ -8,9 +8,6 @@ urlpatterns = [
     # 注册用户
     url(r'^users/$', views.UserView.as_view()),
 
-    # 修改密码
-    url(r'^users/(?P<user_id>\d+)/password/$', views.UpdatePasswordView.as_view()),
-
     # 判断用户名是否已存在
     url(r'^usernames/(?P<username>\w{5,20})/count/$', views.UserCountView.as_view()),
 
@@ -33,6 +30,23 @@ urlpatterns = [
 
     # 浏览记录
     url(r'^browse_histories/$', views.UserBrowseHistoryView.as_view()),
+
+    # 获取图片验证码
+    url(r'^image_codes/(?P<image_code_id>[0-9a-z-]{36})/$', views.ImageView.as_view()),
+
+    # 输入账号名
+    url(r'^accounts/(?P<username>\w{5,20})/sms/token/$', views.UserAccountView.as_view()),
+
+    # 获取短信验证码
+    url(r'^sms_codes/$', views.SMSView.as_view()),
+
+    # 验证身份
+    url(r'^accounts/(?P<username>\w{5,20})/password/token/$', views.VerificationView.as_view()),
+
+    # 修改密码
+    url(r'^users/(?P<user_id>\d+)/password/$', views.UpdatePasswordView.as_view()),
+    # 重置密码
+    # url(r'^users/(?P<user_id>\d+)/password/$', views.VerificationView.as_view()),
 ]
 
 router = DefaultRouter()
