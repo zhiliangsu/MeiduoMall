@@ -2,23 +2,46 @@ from django.shortcuts import render
 from django_redis import get_redis_connection
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import CreateAPIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
 
+
 from goods.models import SKU
-from .serializers import OrderSettlementSerializer, CommitOrderSerializer
+from .models import OrderInfo
+from .serializers import OrderSettlementSerializer, CommitOrderSerializer, OrderListSerializer
 
 
 # Create your views here.
-class CommitOrderView(CreateAPIView):
-    """保存订单接口"""
+class OrdersViewSet(ModelViewSet):
+    """保存订单/订单列表展示接口"""
 
     # 指定权限
     permission_classes = [IsAuthenticated]
 
     # 指定序列化器
-    serializer_class = CommitOrderSerializer
+    # serializer_class = CommitOrderSerializer
+    def get_serializer_class(self):
+        """根据action不同选择不同的序列化器"""
+        if self.action == 'list':
+            return OrderListSerializer
+        else:
+            return CommitOrderSerializer
+
+    def list(self, request, *args, **kwargs):
+
+        # queryset要排序,不然会报错
+        queryset = OrderInfo.objects.filter(user=request.user).all().order_by('-create_time')
+        # 以下四行从源码复制过来,不写分页不work,why?
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        count = queryset.count()
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response({'count': count, 'results': serializer.data})
 
 
 class OrderSettlementView(APIView):
