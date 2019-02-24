@@ -1,10 +1,13 @@
 from django.shortcuts import render
 from drf_haystack.viewsets import HaystackViewSet
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.filters import OrderingFilter
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .models import SKU
-from .serializers import SKUSerializer, SKUSearchSerializer
+from orders.models import OrderInfo
+from .serializers import SKUSerializer, SKUSearchSerializer, OrderListSerializer
 
 
 # Create your views here.
@@ -35,3 +38,27 @@ class SKUSearchViewSet(HaystackViewSet):
     index_models = [SKU]
 
     serializer_class = SKUSearchSerializer
+
+
+# GET url(r'^orders/$', views.OrderListView.as_view())
+class OrderListView(GenericAPIView):
+    """订单列表数据"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderListSerializer
+
+    def get(self, request):
+        # queryset要排序,不然会报错
+        # UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list:
+        # <class 'orders.models.OrderInfo'> QuerySet.
+        queryset = OrderInfo.objects.filter(user=request.user).all().order_by('-create_time')
+        # 以下四行从源码复制过来,不写分页不work,why?
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        count = queryset.count()
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response({'count': count, 'results': serializer.data})
