@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from goods.models import SKU
 from orders.models import OrderInfo, OrderGoods
+from users.models import User
 
 
 class CommitOrderSerializer(serializers.ModelSerializer):
@@ -191,7 +192,28 @@ class OrderGoodsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderGoods
-        fields = ['sku', 'count', 'price']
+        fields = ['sku', 'count', 'price', 'order', 'comment', 'score', 'is_anonymous', 'is_commented']
+        read_only_fields = ['count', 'price']
+
+    def update(self, instance, validated_data):
+
+        instance.comment = validated_data.get('comment')
+        instance.score = validated_data.get('score')
+        instance.is_anonymous = validated_data.get('is_anonymous')
+        instance.is_commented = True
+        instance.save()
+
+        sku = instance.sku
+        sku.comments += 1
+        sku.save()
+
+        not_commented = OrderGoods.objects.filter(order_id=instance.order_id, is_commented=False).count()
+        if not not_commented:
+            order = instance.order
+            order.status = OrderInfo.ORDER_STATUS_ENUM['FINISHED']
+            order.save()
+
+        return instance
 
 
 class OrderListSerializer(serializers.ModelSerializer):
