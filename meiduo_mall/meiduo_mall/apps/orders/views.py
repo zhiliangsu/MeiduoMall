@@ -2,17 +2,32 @@ from django.shortcuts import render
 from django_redis import get_redis_connection
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
 
 
 from goods.models import SKU
-from .models import OrderInfo
-from .serializers import OrderSettlementSerializer, CommitOrderSerializer, OrderListSerializer
+from .models import OrderInfo, OrderGoods
+from .serializers import OrderSettlementSerializer, CommitOrderSerializer, OrderListSerializer, OrderGoodsSerializer
 
 
 # Create your views here.
+# GET url(r'^orders/(?P<order_id>\d+)/uncommentgoods/$', views.OrderGoodsCommentView.as_view())
+class OrderGoodsCommentView(ListAPIView):
+    """已完成订单商品评价"""
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+
+        order_goods = OrderGoods.objects.filter(order_id=self.kwargs.get('order_id')).all()
+        serializer = OrderGoodsSerializer(order_goods, many=True)
+
+        return Response(serializer.data)
+
+
 class OrdersViewSet(ModelViewSet):
     """保存订单/订单列表展示接口"""
 

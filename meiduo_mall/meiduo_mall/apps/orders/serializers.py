@@ -181,7 +181,7 @@ class GoodSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SKU
-        fields = ['default_image_url', 'name']
+        fields = ['id', 'default_image_url', 'name']
 
 
 class OrderGoodsSerializer(serializers.ModelSerializer):
