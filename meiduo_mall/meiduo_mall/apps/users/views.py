@@ -412,6 +412,7 @@ class VerificationView(APIView):
         sms_code = request.query_params.get('sms_code')
 
         try:
+            # TODO: 可以通过之前加密过的access_token取出mobile进行验证,避免恶意用户伪造请求
             user = User.objects.filter(Q(username=username) | Q(mobile=username)).first()
         except User.DoesNotExist:
             return Response({'message': '查询用户对象异常'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -23,6 +23,7 @@ class GoodDetailCommentView(APIView):
         order_goods = OrderGoods.objects.filter(sku_id=sku_id, is_commented=True).all()
         data = []
         for order_good in order_goods:
+            # TODO: 判断order_good的评论是否是匿名评论,如果是,对username进行处理再输出
             user_comment = {
                 'comment': order_good.comment,
                 'score': order_good.score,

@@ -196,6 +196,7 @@ class OrderGoodsSerializer(serializers.ModelSerializer):
         read_only_fields = ['count', 'price']
 
     def update(self, instance, validated_data):
+        # TODO: 涉及到三张表的操作,可以使用事务
 
         instance.comment = validated_data.get('comment')
         instance.score = validated_data.get('score')
